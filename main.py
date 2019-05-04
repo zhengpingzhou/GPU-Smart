@@ -11,7 +11,10 @@ import argparse
 # ------------------------------------------------------------------------------
 n_gpus = len(os.popen('gpustat').readlines()) - 1
 parser = argparse.ArgumentParser()
-parser.add_argument('--max_used_gpus', '-n', type=int, default=n_gpus, help='Max number of GPUs in use')
+parser.add_argument('--max_used_gpus', '-n', type=int, default=n_gpus, 
+    help='Max number of GPUs in use')
+parser.add_argument('--commands_file', '-f', type=str, default='', 
+    help='A file containing all commands, 1 command in each line')
 args = parser.parse_args()
 
 # ------------------------------------------------------------------------------
@@ -86,6 +89,18 @@ class Allocator(threading.Thread):
 
 
 def controller(allocator):
+    # ------------------------------------------------------------------------------
+    if args.commands_file != '':
+        try:
+            f = open(args.commands_file)
+            for line in f:
+                command = line.strip()
+                if command == '': continue
+                allocator.AddWaitList(command)
+            f.close()
+        except:
+            print('Error load commands file!')
+    # ------------------------------------------------------------------------------ 
     while True:
         os.system('clear')
         print('Welcome to Smart GPU Queue')
@@ -99,6 +114,7 @@ def controller(allocator):
         print('[6] Max Number')
         # print('[6] Exit')
         print('--------------------------')
+
         cid = input('Please input command ID\n')
         if cid == '1':
             command = input('Please input command\n')
