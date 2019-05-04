@@ -1,18 +1,30 @@
+# ------------------------------------------------------------------------------
+# Usage: python3 main.py -n 2   # max 2 gpus for current user
+# ------------------------------------------------------------------------------
+
 import os
 import threading
 import time
+import getpass
+import argparse
 
-'''
-[Requirement] python3
-[Requirement] gpustat: pip install gpustat --user
-'''
+# ------------------------------------------------------------------------------
+n_gpus = len(os.popen('gpustat').readlines()) - 1
+print('#GPUs:', n_gpus)
 
+parser = argparse.ArgumentParser()
+parser.add_argument('--max_used_gpus', '-n', type=int, default=n_gpus, help='Max number of GPUs in use')
+args = parser.parse_args()
+
+# ------------------------------------------------------------------------------
 class Allocator(threading.Thread):
     def __init__(self):
         threading.Thread.__init__(self)
         self.running_hist = []
         self.waiting_list = []
         self.reserve_num = 0
+        self.user = getpass.getuser()
+        print('User:', self.user)
 
     '''
     arthur1  Wed Aug 22 15:29:01 2018
@@ -24,6 +36,16 @@ class Allocator(threading.Thread):
     def GetIdleId(self):
         idleid = []
         info = os.popen('gpustat').readlines()
+
+        used_gpus = 0
+        for line in info[1:]:
+            splitline = line.split('|')
+            usage = splitline[-1].strip()
+            if self.user in usage: 
+                used_gpus += 1
+        if used_gpus >= parser.max_used_gpus:
+            return []
+
         for line in info[1:]:
             splitline = line.split('|')
             usage = splitline[-1].strip()
@@ -75,6 +97,7 @@ def controller(allocator):
         print('[3] Waiting List')
         print('[4] GPU Status')
         print('[5] Reserve Number')
+        print('[6] Max Number')
         # print('[6] Exit')
         print('--------------------------')
         cid = input('Please input command ID\n')
@@ -99,6 +122,19 @@ def controller(allocator):
                     print('Reserve Number must >= 0')
             except:
                 print('Please input integer')
+        elif cid == '6':
+            print('Current max number: %s' % args.max_used_gpus)
+            num = input('Please input how many GPUs you want to use\n')
+            try:
+                num = int(num)
+                if num > 0:
+                    args.max_used_gpus = num
+                    print('Set successfully')
+                else:
+                    print('Max Number must > 0')
+            except:
+                print('Please input integer')
+
         # No way to stop...
         # elif cid == '6':
         #     i = input('[Warning]: Please make sure no running process! [Y/N]\n')
@@ -110,7 +146,7 @@ def controller(allocator):
             continue
         else:
             print('Error command!')
-        input('Press <Entey> return to the menu...\n')
+        input('Press <Enter> return to the menu...\n')
 
 
 if __name__ == '__main__':
