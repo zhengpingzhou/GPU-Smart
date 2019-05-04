@@ -10,8 +10,6 @@ import argparse
 
 # ------------------------------------------------------------------------------
 n_gpus = len(os.popen('gpustat').readlines()) - 1
-print('#GPUs:', n_gpus)
-
 parser = argparse.ArgumentParser()
 parser.add_argument('--max_used_gpus', '-n', type=int, default=n_gpus, help='Max number of GPUs in use')
 args = parser.parse_args()
@@ -43,7 +41,7 @@ class Allocator(threading.Thread):
             usage = splitline[-1].strip()
             if self.user in usage: 
                 used_gpus += 1
-        if used_gpus >= parser.max_used_gpus:
+        if used_gpus >= args.max_used_gpus:
             return []
 
         for line in info[1:]:
@@ -91,6 +89,7 @@ def controller(allocator):
     while True:
         os.system('clear')
         print('Welcome to Smart GPU Queue')
+        print('Total number of GPUs: %d' % n_gpus)
         print('--------------------------')
         print('[1] New Command')
         print('[2] Running History')
